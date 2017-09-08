@@ -285,7 +285,7 @@ subprojects { subproj ->
 			}
 		}
 
-		def signArtifacts = !project.version.contains('SNAPSHOT')
+		def signArtifacts = !project.version.contains('SNAPSHOT') && "true" != System.getenv("JITPACK")
 
 		afterEvaluate {
 			if (signArtifacts && uploadArchives.enabled) {

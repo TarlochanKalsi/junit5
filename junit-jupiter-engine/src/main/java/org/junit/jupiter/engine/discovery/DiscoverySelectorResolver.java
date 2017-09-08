@@ -16,11 +16,15 @@ import static org.junit.platform.commons.util.ReflectionUtils.findAllClassesInPa
 import static org.junit.platform.engine.support.filter.ClasspathScanningSupport.buildClassNamePredicate;
 
 import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.ServiceLoader;
 import java.util.Set;
 import java.util.function.Predicate;
 
 import org.apiguardian.api.API;
 import org.junit.jupiter.engine.discovery.predicates.IsScannableTestClass;
+import org.junit.platform.commons.logging.Logger;
+import org.junit.platform.commons.logging.LoggerFactory;
 import org.junit.platform.engine.EngineDiscoveryRequest;
 import org.junit.platform.engine.TestDescriptor;
 import org.junit.platform.engine.discovery.ClassSelector;
@@ -41,6 +45,7 @@ import org.junit.platform.engine.discovery.UniqueIdSelector;
 @API(status = INTERNAL, since = "5.0")
 public class DiscoverySelectorResolver {
 
+	private static final Logger logger = LoggerFactory.getLogger(DiscoverySelectorResolver.class);
 	private static final IsScannableTestClass isScannableTestClass = new IsScannableTestClass();
 
 	public void resolveSelectors(EngineDiscoveryRequest request, TestDescriptor engineDescriptor) {
@@ -64,6 +69,14 @@ public class DiscoverySelectorResolver {
 		request.getSelectorsByType(UniqueIdSelector.class).forEach(selector -> {
 			javaElementsResolver.resolveUniqueId(selector.getUniqueId());
 		});
+
+		logger.config(() -> "Loading Discoverers...");
+		for (Discoverer discoverer : ServiceLoader.load(Discoverer.class)) {
+			List<Class<?>> classes = discoverer.discover(request, classNamePredicate, isScannableTestClass);
+			logger.debug(() -> String.format("%s discovered: %s", discoverer, classes));
+			classes.forEach(javaElementsResolver::resolveClass);
+		}
+
 		pruneTree(engineDescriptor);
 	}
 
